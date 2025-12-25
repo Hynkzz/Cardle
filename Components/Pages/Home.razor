@@ -1,0 +1,159 @@
+﻿@page "/"
+@using Cardle.Services
+@inject AuthService AuthService
+@inject NavigationManager NavManager
+@implements IDisposable
+@rendermode InteractiveServer
+
+<div class="home-container fade-in">
+    <div class="logo-area">
+        <img src="/images/icons/app-logo.svg" alt="Cardle" class="main-logo" />
+        <p class="subtitle">Araçları Tahmin Et!</p>
+    </div>
+
+    <div class="auth-section">
+        @if (AuthService.IsLoggedIn && AuthService.CurrentUser != null)
+        {
+            <div class="user-badge fade-in">
+                <span>👋 Hoşgeldin, <strong>@AuthService.CurrentUser.Username</strong></span>
+                <button class="logout-btn" @onclick="Logout">Çıkış</button>
+            </div>
+        }
+        else
+        {
+            <div class="guest-buttons fade-in">
+                <a href="/login" class="auth-btn login">
+                    🔑 Giriş Yap
+                </a>
+                <a href="/register" class="auth-btn register">
+                    ✨ Kayıt Ol
+                </a>
+            </div>
+        }
+    </div>
+
+    <div class="menu-stack">
+        <a href="/game/classic" class="menu-btn classic">
+            <img src="/images/icons/menu-classic.svg" class="btn-icon" alt="Klasik" />
+            <div class="text-group">
+                <span class="label">Klasik</span>
+                <span class="desc">Her Gün Yenilenir!</span>
+            </div>
+        </a>
+
+        <a href="/game/infinite" class="menu-btn infinite">
+            <img src="/images/icons/menu-infinite.svg" class="btn-icon" alt="Sonsuz" />
+            <div class="text-group">
+                <span class="label">Sonsuz Mod</span>
+                <span class="desc">Bilebildiğin kadar bil!</span>
+            </div>
+        </a>
+
+        <a href="/game/visual" class="menu-btn visual">
+            <img src="/images/icons/menu-visual.svg" class="btn-icon" alt="Görsel" />
+            <div class="text-group">
+                <span class="label">Görsel</span>
+                <span class="desc">Mikroskop modundan tanı</span>
+            </div>
+        </a>
+
+        <NavLink href="leaderboard" class="menu-btn leaderboard">
+            <img src="/images/icons/menu-leaderboard.svg" class="btn-icon" alt="Sıralama" />
+            <div class="text-group">
+                <span class="label">Sıralama</span>
+                <span class="desc">En iyi oyuncular</span>
+            </div>
+        </NavLink>
+
+        @if (AuthService.IsAdmin)
+        {
+            <NavLink href="admin" class="menu-btn admin">
+                <img src="/images/icons/menu-admin.svg" class="btn-icon" alt="Admin" />
+                <div class="text-group">
+                    <span class="label">Yönetici Paneli</span>
+                    <span class="desc">Veritabanı işlemleri</span>
+                </div>
+            </NavLink>
+        }
+    </div>
+</div>
+
+<style>
+    .home-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 85vh; color: white; text-align: center; padding: 20px; }
+    
+    .main-logo { width: 280px; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)); transition: transform 0.3s; }
+    .main-logo:hover { transform: scale(1.05); }
+    .subtitle { color: #bdc3c7; font-size: 1.1rem; margin-bottom: 20px; }
+
+    .auth-section { margin-bottom: 30px; min-height: 50px; }
+    
+    .guest-buttons { display: flex; gap: 15px; justify-content: center; }
+    .auth-btn { 
+        padding: 10px 25px; 
+        border-radius: 30px; 
+        text-decoration: none; 
+        font-weight: bold; 
+        border: 2px solid;
+        transition: all 0.2s ease;
+        background: #151515;
+    }
+    .auth-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+    
+    .login { color: #3498db; border-color: #3498db; }
+    .login:hover { background: #3498db; color: #fff; }
+    
+    .register { color: #f1c40f; border-color: #f1c40f; }
+    .register:hover { background: #f1c40f; color: #000; }
+
+    .user-badge { 
+        background: #1e1e1e; 
+        padding: 10px 20px; 
+        border-radius: 12px; 
+        border: 1px solid #333; 
+        display: flex; 
+        align-items: center; 
+        gap: 15px; 
+    }
+    .logout-btn { background: #c0392b; color: white; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+    .logout-btn:hover { background: #e74c3c; }
+
+    .menu-stack { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; }
+    .menu-btn {
+        background: #1e1e1e; border: 2px solid #333; border-radius: 12px;
+        padding: 15px 25px; text-decoration: none; color: white;
+        display: flex; align-items: center; gap: 20px;
+        transition: all 0.2s ease;
+    }
+    .menu-btn:hover { transform: translateX(10px); border-color: #ecf0f1; background: #252525; }
+    
+    .btn-icon { width: 45px; height: 45px; object-fit: contain; }
+    .text-group { display: flex; flex-direction: column; text-align: left; }
+    .label { font-size: 1.2rem; font-weight: bold; }
+    .desc { font-size: 0.85rem; color: #7f8c8d; }
+
+    .classic:hover { border-color: #e74c3c; }
+    .infinite:hover { border-color: #d2d0d7; }
+    .visual:hover { border-color: #f1c40f; }
+    .admin:hover { border-color: #3498db; }
+    .leaderboard:hover { border-color: #f1c40f; }
+    
+    .fade-in { animation: fadeIn 0.5s ease; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    protected override void OnInitialized()
+    {
+        AuthService.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnChange -= StateHasChanged;
+    }
+
+    private void Logout()
+    {
+        AuthService.Logout();
+    }
+}

@@ -1,0 +1,246 @@
+@page "/game/classic"
+@using Cardle.Data
+@using Cardle.Models
+@using Cardle.Services
+@using Microsoft.EntityFrameworkCore
+@inject GameService GameService
+@inject NavigationManager NavManager
+@inject AuthService AuthService
+@inject AppDbContext DbContext
+@rendermode InteractiveServer
+
+<div class="main-wrapper fade-in">
+    <div class="game-container">
+        <div class="header">
+            <button class="signal-btn left" @onclick="GoHome"></button>
+            <h1>KLASİK</h1>
+            <button class="help-icon-btn" @onclick="() => showHelp = true">
+                <img src="/images/icons/help-icon.svg" alt="Yardım" />
+            </button>
+        </div>
+
+        @if (GameService.DailyCar == null)
+        {
+            <div class="alert-box">⚠️ Veritabanı boş! Admin panelinden araç ekle.</div>
+        }
+        else
+        {
+            <div class="sticky-header-container">
+                <div class="input-wrapper">
+                    <div class="search-box">
+                        <input type="text" @bind="guessInput" @oninput="OnInputChanged" placeholder="Tahmin et..." class="car-input" disabled="@isGameWon" />
+                        @if (suggestions.Any())
+                        {
+                            <ul class="suggestions-list">
+                                @foreach (var car in suggestions) { <li @onclick="() => SelectCar(car)"><span>@car.Brand @car.Model</span></li> }
+                            </ul>
+                        }
+                    </div>
+                    @if (!isGameWon) 
+                    { 
+                        <button type="button" @onclick="MakeGuess" class="submit-icon-btn">
+                            <img src="/images/icons/action-submit.svg" alt="Gönder" />
+                        </button> 
+                    }
+                </div>
+    
+                <div class="row header-row">
+                    <div class="cell">Marka</div> <div class="cell">Model</div> <div class="cell">Kasa</div> <div class="cell">Köken</div> <div class="cell">Güç</div>
+                </div>
+            </div>
+
+            <div class="results-table">
+                @foreach (var guess in guessedCars.AsEnumerable().Reverse())
+                {
+                    <div class="row table-anim">
+                        <div class="cell @GetBrandColor(guess, GameService.DailyCar)">@guess.Brand <span class="sub-text">@guess.ParentCompany</span></div>
+                        <div class="cell @(guess.Model == GameService.DailyCar.Model ? "correct" : "wrong")">@guess.Model</div>
+                        <div class="cell @(guess.Body == GameService.DailyCar.Body ? "correct" : "wrong")">@guess.Body</div>
+                        <div class="cell @GetOriginColor(guess, GameService.DailyCar)">@guess.Country <span class="sub-text">@guess.Continent</span></div>
+                        <div class="cell @(guess.Power == GameService.DailyCar.Power ? "correct" : "wrong")">@guess.Power</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (isGameWon)
+    {
+        <div class="modal-overlay">
+            <div class="modal-content win-modal">
+                <h2>🎉 TEBRİKLER!</h2>
+                <p><strong>@guessedCars.Count.</strong> denemede buldun!</p>
+                <div class="car-reveal">
+                    <h3>@GameService.DailyCar.Brand @GameService.DailyCar.Model</h3>
+                    @if (!string.IsNullOrEmpty(GameService.DailyCar.ImageUrl))
+                    {
+                        <img src="@GameService.DailyCar.ImageUrl" class="reveal-img" />
+                    }
+                </div>
+                <button class="restart-btn" @onclick="GoHome">Ana Menü</button>
+            </div>
+        </div>
+    }
+
+    @if (showHelp) {
+        <div class="modal-overlay" @onclick="() => showHelp = false">
+            <div class="modal-content help-modal" @onclick:stopPropagation="true">
+                <h3>Renklerin Anlamı</h3>
+                <div class="help-grid">
+                    <div class="help-item correct">YEŞİL<br><small>Tam Doğru</small></div>
+                    <div class="help-item partial">SARI<br><small>Grup/Kıta</small></div>
+                    <div class="help-item wrong">KIRMIZI<br><small>Yanlış</small></div>
+                </div>
+                <button class="close-btn" @onclick="() => showHelp = false">Tamam</button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    :root { --bg-color: #121212; }
+
+    /* 🔥 ANA KAYDIRMA AYARI */
+    .main-wrapper { 
+        height: 100vh; 
+        width: 100%;
+        overflow-y: scroll; /* Scroll Aktif */
+        overflow-x: hidden;
+        background-color: var(--bg-color);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-bottom: 20px;
+    }
+
+    .main-wrapper::-webkit-scrollbar { width: 8px; }
+    .main-wrapper::-webkit-scrollbar-track { background: #121212; }
+    .main-wrapper::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+    .game-container { width: 100%; max-width: 600px; padding: 0 15px; margin-bottom: 50px; }
+
+    .header { display: flex; justify-content: space-between; align-items: center; color: white; margin-top: 20px; margin-bottom: 10px; }
+
+    .sticky-header-container {
+        position: sticky;
+        top: 0;
+        z-index: 500;
+        background-color: #121212; 
+        padding-top: 10px;
+        padding-bottom: 5px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .input-wrapper { display: flex; width: 100%; height: 55px; background: #2b2b2b; border: 2px solid #444; border-radius: 12px; position: relative; margin-bottom: 10px;}
+
+    .fade-in { animation: fadeIn 0.6s ease forwards; opacity: 0; }
+    .table-anim { animation: slideIn 0.4s ease forwards; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @@keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+
+    .help-icon-btn, .signal-btn { background: none; border: none; cursor: pointer; transition: transform 0.2s; }
+    .help-icon-btn:hover, .signal-btn:hover { transform: scale(1.1); }
+    .help-icon-btn img { width: 30px; height: 30px; }
+    .signal-btn { width: 40px; height: 40px; background: transparent center/contain no-repeat; }
+    .signal-btn.left { background-image: url('/images/icons/signal-left-off.svg'); }
+    .signal-btn.left:hover { background-image: url('/images/icons/signal-left-on.svg'); }
+
+    .search-box { flex: 1; position: relative; height: 100%; }
+    .car-input { width: 100%; height: 100%; background: transparent; border: none; color: white; font-size: 1.1rem; padding: 0 15px; outline: none; }
+    
+    .submit-icon-btn { width: 60px; height: 100%; background: #ecf0f1; border: none; border-radius: 0 10px 10px 0; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+    .submit-icon-btn img { height: 25px; width: auto; }
+
+    /* TABLO */
+    .results-table { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 5px; }
+    .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    
+    .cell { 
+        background: #252525; height: 65px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: 8px; font-size: 0.75rem; color: white; border: 1px solid #333; overflow: hidden; padding: 2px; line-height: 1.2;
+    }
+    
+    .header-row .cell { background: none; border: none; height: auto; color: #888; font-weight: bold; font-size: 0.7rem; margin-bottom: 5px; }
+    .sub-text { font-size: 0.6rem; opacity: 0.7; margin-top: 3px; font-weight: normal; }
+    
+    .correct { background-color: #27ae60 !important; border-color: #2ecc71 !important; } 
+    .partial { background-color: #f1c40f !important; color: black !important; border-color: #f39c12 !important; } 
+    .wrong { background-color: #c0392b !important; opacity: 0.95; border-color: #e74c3c !important; }
+
+    .suggestions-list { position: absolute; top: 105%; width: 100%; background: #222; list-style: none; padding: 0; border: 1px solid #444; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 2000; box-shadow: 0 10px 30px rgba(0,0,0,0.9); } 
+    .suggestions-list li { padding: 12px 15px; border-bottom: 1px solid #333; cursor: pointer; color: white; } 
+    .suggestions-list li:hover { background: #333; }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 3000; }
+    .modal-content { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; border: 1px solid #444; }
+    .car-reveal { background: #252525; padding: 15px; border-radius: 10px; margin: 20px 0; border: 1px solid #333; color: white; }
+    .reveal-img { width: 100%; border-radius: 8px; margin-bottom: 10px; max-height: 200px; object-fit: cover; }
+    .help-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+    .help-item { padding: 10px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; color: white; }
+    .restart-btn { background: #2ecc71; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .close-btn { background: #555; color: white; padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; }
+</style>
+
+@code {
+    private bool showHelp = false;
+    private string guessInput = "";
+    private bool isGameWon = false;
+    private List<Car> guessedCars = new List<Car>();
+    private List<Car> suggestions = new List<Car>();
+
+    CancellationTokenSource? _cts;
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        guessInput = e.Value?.ToString() ?? "";
+
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(250, _cts.Token); 
+        }
+        catch
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(guessInput))
+        {
+            suggestions.Clear();
+            return;
+        }
+
+        suggestions = GameService.GetAllCars()
+            .Where(c =>
+                !guessedCars.Any(g => g.Id == c.Id) &&
+                (c.Brand.Contains(guessInput, StringComparison.OrdinalIgnoreCase) ||
+                 c.Model.Contains(guessInput, StringComparison.OrdinalIgnoreCase)))
+            .Take(30) // 50 → 30 daha hafif
+            .ToList();
+    }
+
+
+    private void SelectCar(Car car) { guessInput = car.DisplayName; suggestions.Clear(); MakeGuess(); }
+
+    private void MakeGuess() 
+    { 
+        if (isGameWon || string.IsNullOrWhiteSpace(guessInput)) return;
+        var foundCar = GameService.GetAllCars().FirstOrDefault(c => c.DisplayName.Equals(guessInput, StringComparison.OrdinalIgnoreCase));
+        
+        if (foundCar != null && !guessedCars.Any(c => c.Id == foundCar.Id)) 
+        { 
+            guessedCars.Add(foundCar); 
+            if (foundCar.Id == GameService.DailyCar.Id) 
+            {
+                isGameWon = true; 
+                // BURADAKİ DB KAYIT KODUNU SİLDİK. ARTIK SADECE OYNANIYOR.
+            } 
+            guessInput = ""; suggestions.Clear(); 
+        } 
+    }
+
+    private void GoHome() { NavManager.NavigateTo("/"); }
+    private string GetBrandColor(Car g, Car t) => g.Brand == t.Brand ? "correct" : (g.ParentCompany == t.ParentCompany ? "partial" : "wrong");
+    private string GetOriginColor(Car g, Car t) => g.Country == t.Country ? "correct" : (g.Continent == t.Continent ? "partial" : "wrong");
+}

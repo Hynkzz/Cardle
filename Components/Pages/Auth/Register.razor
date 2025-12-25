@@ -1,0 +1,120 @@
+@page "/register"
+@using Cardle.Services
+@using System.ComponentModel.DataAnnotations
+@inject AuthService AuthService
+@inject NavigationManager NavManager
+@rendermode InteractiveServer
+
+<div class="login-wrapper fade-in">
+    <div class="login-card">
+        <button class="signal-btn left back-pos" @onclick="GoHome"></button>
+
+        <div class="icon">✨</div>
+        <h2>KAYIT OL</h2>
+        <p>Aramıza katıl, skorlarını yarıştır.</p>
+
+        <EditForm Model="regModel" OnValidSubmit="HandleRegister" FormName="regForm">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <InputText @bind-Value="regModel.Username" class="input-field" placeholder="Kullanıcı Adı Seç (3-15 Karakter)" />
+                <ValidationMessage For="@(() => regModel.Username)" class="val-msg" />
+            </div>
+
+            <div class="form-group">
+                <InputText type="password" @bind-Value="regModel.Password" class="input-field" placeholder="Şifre Belirle (6-20 Karakter)" />
+                <ValidationMessage For="@(() => regModel.Password)" class="val-msg" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(msg))
+            {
+                <div class="info-msg @(isError ? "err" : "succ")">@msg</div>
+            }
+
+            <button type="submit" class="login-btn">HESAP OLUŞTUR</button>
+        </EditForm>
+
+        <div class="links">
+            <a href="/login">Zaten hesabın var mı? <strong>Giriş Yap</strong></a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 🔥 TASARIM KODLARI AYNEN DURUYOR */
+    .fade-in { animation: fadeIn 0.6s ease forwards; opacity: 0; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    :root { --bg-color: #121212; }
+    body, html { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; overflow-x: hidden; }
+
+    .login-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background-color: #121212; z-index: 9999; }
+    .login-card { background: #1e1e1e; padding: 40px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
+
+    .signal-btn { width: 40px; height: 40px; border: none; background-color: transparent; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: transform 0.2s; position: absolute; }
+    .signal-btn:hover { transform: scale(1.1); }
+    .signal-btn.left { background-image: url('/images/icons/signal-left-off.svg'); }
+    .signal-btn.left:hover { background-image: url('/images/icons/signal-left-on.svg'); }
+    .back-pos { top: 20px; left: 20px; }
+
+    .icon { font-size: 3rem; margin-bottom: 10px; }
+    h2 { color: #ecf0f1; margin: 0 0 10px 0; letter-spacing: 1px; }
+    p { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 30px; }
+    .form-group { margin-bottom: 15px; text-align: left; }
+    
+    .input-field { width: 100%; padding: 12px 15px; background: #2b2b2b; border: 1px solid #444; border-radius: 8px; color: white; font-size: 1rem; outline: none; box-sizing: border-box; }
+    .input-field:focus { border-color: #2ecc71; }
+    
+    .login-btn { width: 100%; padding: 12px; background: #2ecc71; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 10px; }
+    .login-btn:hover { filter: brightness(1.1); transform: scale(1.02); }
+    
+    .info-msg { padding: 10px; border-radius: 5px; font-size: 0.9rem; margin-bottom: 15px; margin-top: 15px; }
+    .err { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+    .succ { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+    
+    .links { margin-top: 20px; font-size: 0.9rem; }
+    .links a { color: #aaa; text-decoration: none; }
+    .links a strong { color: #2ecc71; }
+
+    .val-msg { color: #e74c3c; font-size: 0.8rem; margin-top: 5px; display: block; font-weight: bold; }
+</style>
+
+@code {
+    private RegisterInputModel regModel = new RegisterInputModel();
+    private string msg = ""; 
+    private bool isError = false;
+
+    private async Task HandleRegister() 
+    { 
+        // 🔥 DÜZELTİLDİ: Artık await AuthService.RegisterAsync DEĞİL
+        // Direkt AuthService.Register çağırıyoruz (Senkron)
+        var success = AuthService.Register(regModel.Username, regModel.Password);
+        
+        if (success) 
+        { 
+            msg = "Kayıt başarılı! Yönlendiriliyorsun..."; 
+            isError = false; 
+            // Kullanıcı mesajı görsün diye UI'da yapay bekleme yapıyoruz
+            await Task.Delay(2000);
+            NavManager.NavigateTo("/login"); 
+        } 
+        else 
+        { 
+            msg = "Bu kullanıcı adı zaten alınmış."; 
+            isError = true; 
+        } 
+    }
+
+    private void GoHome() { NavManager.NavigateTo("/"); }
+
+    public class RegisterInputModel
+    {
+        [Required(ErrorMessage = "Kullanıcı adı boş olamaz.")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "Kullanıcı adı 3-50 karakter arasında olmalı.")]
+        public string Username { get; set; } = "";
+
+        [Required(ErrorMessage = "Şifre boş olamaz.")]
+        [StringLength(50, MinimumLength = 4, ErrorMessage = "Şifre 4-50 karakter olmalı.")]
+        public string Password { get; set; } = "";
+    }
+}

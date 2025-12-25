@@ -1,0 +1,213 @@
+@page "/admin/add-car"
+@page "/admin/edit-car/{Id:int}"
+@using System.IO
+@inject AppDbContext DbContext
+@inject NavigationManager NavManager
+@inject AuthService AuthService
+@rendermode InteractiveServer
+
+<div class="form-container fade-in">
+    <h2>@(Id == null ? "YENİ ARAÇ EKLE" : "ARACI DÜZENLE")</h2>
+
+    <EditForm Model="CarModel" OnValidSubmit="SaveCar" FormName="carForm">
+        <DataAnnotationsValidator />
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Marka</label>
+                <InputText @bind-Value="CarModel.Brand" class="form-input" placeholder="Örn: Renault" />
+            </div>
+            
+            <div class="form-group">
+                <label>Model</label>
+                <InputText @bind-Value="CarModel.Model" class="form-input" placeholder="Örn: Clio" />
+            </div>
+
+            <div class="form-group">
+                <label>Kasa Tipi</label>
+                <InputSelect @bind-Value="CarModel.Body" class="form-input">
+                    <option value="">Seçiniz...</option>
+                    <option value="Sedan">Sedan</option>
+                    <option value="Hatchback">Hatchback</option>
+                    <option value="SUV">SUV</option>
+                    <option value="Coupe">Coupe</option>
+                    <option value="Station Wagon">Station Wagon</option>
+                    <option value="Pickup">Pickup</option>
+                    <option value="Convertible">Convertible</option>
+                </InputSelect>
+            </div>
+
+            <div class="form-group">
+                <label>Ülke</label>
+                <InputText @bind-Value="CarModel.Country" class="form-input" placeholder="Örn: Fransa" />
+            </div>
+
+            <div class="form-group">
+                <label>Kıta</label>
+                <InputSelect @bind-Value="CarModel.Continent" class="form-input">
+                    <option value="">Seçiniz...</option>
+                    <option value="Avrupa">Avrupa</option>
+                    <option value="Asya">Asya</option>
+                    <option value="Amerika">Amerika</option>
+                </InputSelect>
+            </div>
+
+            <div class="form-group">
+                <label>Güç (Motor)</label>
+                <InputSelect @bind-Value="CarModel.Power" class="form-input">
+                    <option value="">Seçiniz...</option>
+                    <option value="ICE">ICE (İçten Yanmalı)</option>
+                    <option value="EV">EV (Elektrik)</option>
+                    <option value="Hybrid">Hybrid</option>
+                </InputSelect>
+            </div>
+            
+            <div class="form-group">
+                <label>Üretici Grup</label>
+                <InputText @bind-Value="CarModel.ParentCompany" class="form-input" placeholder="Örn: Renault Group" />
+            </div>
+            
+        </div>
+
+        <div class="form-group full-width">
+            <label>Araç Resmi (Max 10MB)</label>
+            <InputFile OnChange="HandleImageUpload" class="file-input" accept="image/*" />
+            
+            @if (isLoadingImage)
+            {
+                <div class="loading-msg">⏳ Resim işleniyor, bekleyin...</div>
+            }
+            
+            @if (!string.IsNullOrEmpty(CarModel.ImageUrl))
+            {
+                <div class="img-preview-box">
+                    <p>Önizleme:</p>
+                    <img src="@CarModel.ImageUrl" class="preview-img" />
+                </div>
+            }
+        </div>
+
+        <div class="actions">
+            @if (isSaving)
+            {
+                <button type="button" class="save-btn" disabled>⏳ KAYDEDİLİYOR...</button>
+            }
+            else
+            {
+                <button type="submit" class="save-btn">
+                    @(Id == null ? "KAYDET" : "GÜNCELLE")
+                </button>
+            }
+            
+            <button type="button" class="cancel-btn" @onclick="GoBack">İPTAL</button>
+        </div>
+    </EditForm>
+</div>
+
+<style>
+    :root { --bg-color: #121212; }
+
+    .form-container {
+        max-width: 700px;
+        margin: 20px auto 60px;
+        padding: 30px;
+        background: #1e1e1e;
+        border-radius: 15px;
+        border: 1px solid #333;
+        color: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+
+        /* 🔥 ASIL OLAY */
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+    }
+    h2 { text-align: center; color: #3498db; margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .full-width { grid-column: span 2; margin-top: 10px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: 0.9rem; color: #aaa; font-weight: bold; }
+    .form-input { padding: 12px; background: #252525; border: 1px solid #444; border-radius: 8px; color: white; font-size: 1rem; outline: none; }
+    .form-input:focus { border-color: #3498db; }
+    .file-input { background: #252525; padding: 10px; border-radius: 8px; border: 1px solid #444; width: 100%; color: #aaa; cursor: pointer; }
+    .img-preview-box { margin-top: 15px; text-align: center; background: #222; padding: 15px; border-radius: 10px; border: 1px dashed #555; }
+    .preview-img { max-width: 100%; height: 200px; object-fit: contain; border-radius: 5px; }
+    .loading-msg { color: #f1c40f; font-weight: bold; margin-top: 5px; }
+    
+    .actions { display: flex; gap: 15px; margin-top: 25px; }
+    .save-btn { flex: 2; background: #27ae60; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: transform 0.2s; }
+    .save-btn:hover:not(:disabled) { background: #2ecc71; transform: scale(1.02); }
+    .save-btn:disabled { background: #555; cursor: not-allowed; }
+    
+    .cancel-btn { flex: 1; background: #c0392b; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+    .cancel-btn:hover { background: #e74c3c; }
+    .fade-in { animation: fadeIn 0.5s ease forwards; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private Car CarModel { get; set; } = new Car();
+    private bool isLoadingImage = false;
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAdmin) { NavManager.NavigateTo("/login"); return; }
+        if (Id != null)
+        {
+            var existingCar = await DbContext.Cars.FindAsync(Id);
+            if (existingCar != null) CarModel = existingCar;
+        }
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        isLoadingImage = true;
+        try 
+        {
+            var file = e.File;
+            if (file != null)
+            {
+                long maxFileSize = 1024 * 1024 * 10; 
+                
+                using var stream = file.OpenReadStream(maxFileSize);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                
+                var base64 = Convert.ToBase64String(ms.ToArray());
+                CarModel.ImageUrl = $"data:{file.ContentType};base64,{base64}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Resim yükleme hatası: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingImage = false;
+            StateHasChanged(); 
+        }
+    }
+
+    private async Task SaveCar()
+    {
+        isSaving = true; 
+        await Task.Delay(1); 
+        
+        try 
+        {
+            if (Id == null) DbContext.Cars.Add(CarModel);
+            else DbContext.Cars.Update(CarModel);
+
+            await DbContext.SaveChangesAsync();
+            NavManager.NavigateTo("/admin");
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine("Kaydetme hatası: " + ex.Message);
+            isSaving = false;
+        }
+    }
+
+    private void GoBack() { NavManager.NavigateTo("/admin"); }
+}

@@ -1,0 +1,25 @@
+﻿@inherits LayoutComponentBase
+@using Cardle.Services
+@using Cardle.Models
+@inject AuthService AuthService
+@inject NavigationManager NavManager
+
+<div class="page">
+    <main>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<style>
+    /* TEMEL AYARLAR */
+    :root { --bg-color: #0a0a0a; --text-color: #ffffff; --accent-color: #e74c3c; }
+    body, html { height: 100%; margin: 0; font-family: 'Rajdhani', sans-serif; background-color: var(--bg-color); color: var(--text-color); overflow-x: hidden; }
+    .content { padding: 20px; }
+</style>
+
+@code {
+protected override async Task OnInitializedAsync() { await AuthService.InitializeAsync(); AuthService.OnChange += StateHasChanged; }
+public void Dispose() { AuthService.OnChange -= StateHasChanged; }
+}

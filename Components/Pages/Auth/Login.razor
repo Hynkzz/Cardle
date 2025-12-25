@@ -1,0 +1,70 @@
+@page "/login"
+@using Cardle.Services
+@inject AuthService AuthService
+@inject NavigationManager NavManager
+@rendermode InteractiveServer
+
+<div class="login-wrapper fade-in">
+    <div class="login-card">
+        <button class="signal-btn left back-pos" @onclick="GoHome"></button>
+
+        <div class="icon">👤</div>
+        <h2>GİRİŞ YAP</h2>
+        <p>Skorlarını kaydetmek için giriş yap.</p>
+
+        <div class="form-group">
+            <input type="text" @bind="username" class="input-field" placeholder="Kullanıcı Adı" />
+        </div>
+
+        <div class="form-group">
+            <input type="password" @bind="password" class="input-field" placeholder="Şifre" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+        <div class="error-msg">@errorMessage</div>
+        }
+
+        <button class="login-btn" @onclick="HandleLogin">GİRİŞ YAP</button>
+
+        <div class="links">
+            <a href="/register">Hesabın yok mu? <strong>Kayıt Ol</strong></a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .fade-in { animation: fadeIn 0.6s ease forwards; opacity: 0; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    :root { --bg-color: #121212; }
+    body, html { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; overflow-x: hidden; }
+
+    .login-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background-color: #121212; z-index: 9999; }
+    .login-card { background: #1e1e1e; padding: 40px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
+
+    .signal-btn { width: 40px; height: 40px; border: none; background-color: transparent; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: transform 0.2s; position: absolute; }
+    .signal-btn:hover { transform: scale(1.1); }
+    .signal-btn.left { background-image: url('/images/icons/signal-left-off.svg'); }
+    .signal-btn.left:hover { background-image: url('/images/icons/signal-left-on.svg'); }
+    .back-pos { top: 20px; left: 20px; }
+
+    .icon { font-size: 3rem; margin-bottom: 10px; }
+    h2 { color: #ecf0f1; margin: 0 0 10px 0; letter-spacing: 1px; }
+    p { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 30px; }
+    .form-group { margin-bottom: 15px; }
+    .input-field { width: 100%; padding: 12px 15px; background: #2b2b2b; border: 1px solid #444; border-radius: 8px; color: white; font-size: 1rem; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
+    .input-field:focus { border-color: #3498db; }
+    .login-btn { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 10px; transition: transform 0.2s; }
+    .login-btn:hover { filter: brightness(1.1); transform: scale(1.02); }
+    .error-msg { background: rgba(231, 76, 60, 0.2); color: #e74c3c; padding: 10px; border-radius: 5px; font-size: 0.9rem; margin-bottom: 15px; }
+    .links { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem; }
+    .links a { color: #aaa; text-decoration: none; }
+    .links a strong { color: #3498db; }
+</style>
+
+@code {
+private string username = ""; private string password = ""; private string errorMessage = "";
+private void HandleLogin() { if (AuthService.Login(username, password)) NavManager.NavigateTo("/"); else errorMessage = "⚠️ Hatalı kullanıcı adı veya şifre!"; }
+private void GoHome() { NavManager.NavigateTo("/"); }
+}

@@ -1,0 +1,286 @@
+@page "/game/visual"
+@using Cardle.Data
+@using Cardle.Models
+@using Cardle.Services
+@using Microsoft.EntityFrameworkCore
+@inject GameService GameService
+@inject NavigationManager NavManager
+@inject AuthService AuthService
+@inject AppDbContext DbContext
+@rendermode InteractiveServer
+
+<div class="main-wrapper fade-in">
+    <div class="game-container">
+        <div class="header">
+             <button class="signal-btn left" @onclick="GoHome"></button> 
+             <h1>GÖRSEL</h1>
+             <div class="score-badge">🔥 @streak</div>
+        </div>
+
+        @if (targetCar == null)
+        {
+            <div class="alert-box">⚠️ Araç yükleniyor...</div>
+        }
+        else
+        {
+            <div class="image-box">
+                <img src="@targetCar.ImageUrl" 
+                     class="car-img @(isImageVisible ? "fade-in-img" : "fade-out-img") @(disableAnimation ? "no-transition" : "")" 
+                     style="@GetImageStyle()" />
+                
+                @if (!isGameWon)
+                {
+                    <div class="zoom-badge">🔍 @currentScale.ToString("0.0")x</div>
+                }
+            </div>
+
+            <div class="sticky-header-container">
+                <div class="input-wrapper">
+                    <div class="search-box">
+                        <input type="text"
+                               value="@GuessInput"
+                               @oninput="OnVisualInput"
+                               class="car-input"
+                               placeholder="Hangi araba bu?" 
+                               disabled="@isGameWon" />
+                               
+                        @if (suggestions.Any())
+                        {
+                            <ul class="suggestions-list">
+                                @foreach (var car in suggestions) { <li @onclick="() => MakeGuess(car)">@car.Brand @car.Model</li> }
+                            </ul>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-table">
+                @foreach (var car in guessedCars.AsEnumerable().Reverse())
+                {
+                    <div class="wrong-card fade-in-item">
+                        <span>❌ @car.Brand @car.Model</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (isGameWon)
+    {
+        <div class="modal-overlay">
+            <div class="modal-content win-modal">
+                <h2>📸 KESKİN GÖZ!</h2>
+                <div class="car-reveal">
+                    <h3>@targetCar.Brand @targetCar.Model</h3>
+                    <img src="@targetCar.ImageUrl" class="reveal-img" />
+                </div>
+                <div class="actions">
+                    <button class="home-btn" @onclick="GoHome">🏠 Menü</button>
+                    <button class="next-btn" @onclick="StartNewGameAsync">Sıradaki ➡️</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    :root { --bg-color: #121212; }
+    
+    .main-wrapper { 
+        height: 100vh; 
+        width: 100%;
+        overflow-y: scroll; 
+        overflow-x: hidden;
+        background-color: var(--bg-color);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-bottom: 50px;
+    }
+
+    .main-wrapper::-webkit-scrollbar { width: 8px; }
+    .main-wrapper::-webkit-scrollbar-track { background: #121212; }
+    .main-wrapper::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+    .game-container { width: 100%; max-width: 500px; padding: 0 15px; margin-bottom: 50px; }
+
+    .header { display: flex; justify-content: space-between; align-items: center; color: white; margin-top: 20px; margin-bottom: 10px; }
+    .score-badge { background: #e67e22; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; color: white; }
+
+    .image-box { 
+        width: 100%; 
+        height: 250px; 
+        background: #222; 
+        border-radius: 12px; 
+        overflow: hidden; 
+        border: 2px solid #444; 
+        position: relative; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+        margin-bottom: 15px; /* Input ile arası açık olsun */
+    }
+    
+    .car-img { 
+        width: 100%; height: 100%; object-fit: cover; 
+        transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease-in-out; 
+    }
+    .no-transition { transition: none !important; }
+    .fade-out-img { opacity: 0; }
+    .fade-in-img { opacity: 1; }
+
+    .zoom-badge { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 5px; color: white; font-size: 0.8rem; font-weight: bold; border: 1px solid #555; backdrop-filter: blur(4px); }
+
+    .sticky-header-container {
+        position: sticky;
+        top: 0;
+        z-index: 500;
+        background-color: #121212;
+        padding-top: 10px;
+        padding-bottom: 5px;
+    }
+
+    .input-wrapper { display: flex; width: 100%; height: 55px; background: #2b2b2b; border: 2px solid #444; border-radius: 12px; position: relative; margin-bottom: 10px;}
+    .search-box { flex: 1; height: 100%; position: relative; }
+    .car-input { width: 100%; height: 100%; background: transparent; border: none; color: white; padding: 0 15px; font-size: 1.1rem; outline: none; }
+
+    .suggestions-list { position: absolute; top: 105%; width: 100%; background: #222; list-style: none; padding: 0; border: 1px solid #444; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 2000; box-shadow: 0 10px 30px rgba(0,0,0,0.9); }
+    .suggestions-list li { padding: 12px 15px; border-bottom: 1px solid #333; cursor: pointer; color: white; }
+    .suggestions-list li:hover { background: #333; }
+
+    .results-table { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .wrong-card { 
+        background: #c0392b; 
+        color: white; 
+        padding: 12px; 
+        border-radius: 8px; 
+        text-align: center; 
+        font-weight: bold; 
+        border: 1px solid #e74c3c; 
+        opacity: 0.9; 
+    }
+    
+    .signal-btn { width: 40px; height: 40px; border: none; background: transparent center/contain no-repeat; cursor: pointer; }
+    .signal-btn.left { background-image: url('/images/icons/signal-left-off.svg'); }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 3000; }
+    .modal-content { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; border: 1px solid #444; }
+    .win-modal h2 { color: #2ecc71; margin-top: 0; }
+    .car-reveal { background: #252525; padding: 15px; border-radius: 10px; margin: 20px 0; border: 1px solid #333; color: white; }
+    .reveal-img { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 200px; object-fit: cover; }
+    .actions { display: flex; gap: 10px; justify-content: center; }
+    .next-btn { background: #2ecc71; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .home-btn { background: #555; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    
+    .fade-in { animation: fadeIn 0.6s ease forwards; }
+    .fade-in-item { animation: fadeIn 0.4s ease forwards; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    private Car? targetCar;
+    private string _guessInput = ""; 
+    private bool isGameWon = false;
+    private int streak = 0;
+    
+    private bool isImageVisible = true; 
+    private bool disableAnimation = false; 
+    
+    private List<Car> guessedCars = new List<Car>();
+    private List<Car> suggestions = new List<Car>();
+    
+    private double currentScale = 4.0; 
+    private int randX = 50;
+    private int randY = 50;
+    private Random _random = new Random();
+
+    private string GuessInput = "";
+    CancellationTokenSource? _cts;
+
+    private async Task OnVisualInput(ChangeEventArgs e)
+    {
+        GuessInput = e.Value?.ToString() ?? "";
+
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(300, _cts.Token);
+        }
+        catch { return; }
+
+        if (string.IsNullOrWhiteSpace(GuessInput))
+        {
+            suggestions.Clear();
+            return;
+        }
+
+        suggestions = GameService.GetAllCars()
+            .Where(c =>
+                !guessedCars.Any(g => g.Id == c.Id) &&
+                c.DisplayName.Contains(GuessInput, StringComparison.OrdinalIgnoreCase))
+            .Take(25)
+            .ToList();
+    }
+
+
+    protected override async Task OnInitializedAsync() { await StartNewGameAsync(); }
+
+    private async Task StartNewGameAsync()
+    {
+        var allCars = GameService.GetAllCars();
+        if (allCars.Any())
+        {
+            isImageVisible = false;
+            StateHasChanged(); 
+            await Task.Delay(200);
+
+            disableAnimation = true; 
+            targetCar = allCars[_random.Next(allCars.Count)];
+            randX = _random.Next(20, 80);
+            randY = _random.Next(20, 80);
+            
+            isGameWon = false;
+            GuessInput = ""; 
+            guessedCars.Clear();
+            suggestions.Clear();
+            currentScale = 4.0;
+            
+            StateHasChanged(); 
+            await Task.Delay(50); 
+
+            disableAnimation = false;
+            isImageVisible = true;
+            StateHasChanged();
+        }
+    }
+
+    private void MakeGuess(Car car) 
+    { 
+        if (isGameWon || targetCar == null) return; 
+        if (guessedCars.Any(c => c.Id == car.Id)) return;
+
+        guessedCars.Add(car);
+
+        if (car.Id == targetCar.Id) 
+        { 
+            isGameWon = true; 
+            currentScale = 1.0; 
+            streak++;
+        } 
+        else 
+        { 
+            currentScale = Math.Max(1.0, currentScale - 0.3); 
+        } 
+        
+        GuessInput = ""; 
+        suggestions.Clear();
+    }
+
+    private string GetImageStyle()
+    {
+        if (isGameWon) return "transform: scale(1);";
+        return $"transform-origin: {randX}% {randY}%; transform: scale({currentScale.ToString(System.Globalization.CultureInfo.InvariantCulture)});";
+    }
+
+    private void GoHome() { NavManager.NavigateTo("/"); }
+}

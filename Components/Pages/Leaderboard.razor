@@ -1,0 +1,128 @@
+@page "/leaderboard"
+@using Cardle.Data
+@using Cardle.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext DbContext
+@inject NavigationManager NavManager
+@rendermode InteractiveServer
+
+<div class="leaderboard-wrapper fade-in">
+    <div class="leaderboard-container">
+        
+        <div class="header">
+            <button class="signal-btn left" @onclick="GoHome"></button>
+            <h1>HARDCORE TOP 10</h1>
+            <div style="width: 40px;"></div>
+        </div>
+
+        <div class="table-box">
+            @if (scores == null)
+            {
+                <div class="loading">Yükleniyor...</div>
+            }
+            else if (!scores.Any())
+            {
+                <div class="empty-state">Henüz kimse cesaret edemedi! İlk sen ol.</div>
+            }
+            else
+            {
+                <table class="lb-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Oyuncu</th>
+                            <th>Skor</th>
+                            <th>Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (score, index) in scores.Select((s, i) => (s, i + 1)))
+                        {
+                            <tr class="@(index <= 3 ? "top-3" : "")">
+                                <td class="rank">
+                                    @if (index == 1) { <span>👑</span> }
+                                    else if (index == 2) { <span>🥈</span> }
+                                    else if (index == 3) { <span>🥉</span> }
+                                    else { @index }
+                                </td>
+                                <td class="username">@score.Username</td>
+                                <td class="score-val">@score.Value</td>
+                                <td class="date">@score.CreatedAt.ToString("dd.MM")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+        
+        <div class="info-text">
+            * Sadece <strong>HARDCORE</strong> modunda yapılan en iyi 10 skor listelenir.
+        </div>
+    </div>
+</div>
+
+<style>
+    :root { --bg-color: #121212; }
+
+    .leaderboard-wrapper {
+        min-height: 100vh;
+        width: 100%;
+        background-color: var(--bg-color);
+        display: flex;
+        justify-content: center;
+        padding-top: 20px;
+    }
+
+    .leaderboard-container {
+        width: 100%;
+        max-width: 500px;
+        padding: 0 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .header { display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 10px; }
+    h1 { color: #e74c3c; font-size: 1.4rem; font-weight: bold; margin: 0; text-align: center; text-shadow: 0 0 10px rgba(231, 76, 60, 0.5); }
+
+    .signal-btn { width: 40px; height: 40px; border: none; background: transparent center/contain no-repeat; cursor: pointer; transition: transform 0.2s; }
+    .signal-btn:hover { transform: scale(1.1); }
+    .signal-btn.left { background-image: url('/images/icons/signal-left-off.svg'); }
+
+    /* TABLO */
+    .table-box { background: #1e1e1e; border-radius: 12px; overflow: hidden; border: 2px solid #e74c3c; box-shadow: 0 0 20px rgba(231, 76, 60, 0.2); }
+    .lb-table { width: 100%; border-collapse: collapse; color: white; }
+    
+    .lb-table th { background: #c0392b; padding: 15px; text-align: left; color: white; font-size: 0.9rem; text-transform: uppercase; }
+    .lb-table td { padding: 15px; border-bottom: 1px solid #333; }
+    .lb-table tr:last-child td { border-bottom: none; }
+    
+    .rank { font-weight: bold; width: 50px; text-align: center; font-size: 1.2rem; }
+    .username { font-weight: bold; font-size: 1.1rem; }
+    .score-val { font-weight: bold; color: #f1c40f; font-size: 1.2rem; text-align: center; }
+    .date { color: #666; font-size: 0.8rem; text-align: right; }
+
+    .top-3 { background: rgba(241, 196, 15, 0.05); }
+
+    .loading, .empty-state { text-align: center; padding: 40px; color: #aaa; }
+    .info-text { text-align: center; color: #555; font-size: 0.8rem; margin-top: -10px; }
+
+    .fade-in { animation: fadeIn 0.5s ease forwards; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    private List<Score> scores;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 🔥 SADECE HARDCORE MODU VE İLK 10
+        scores = await DbContext.Scores
+            .Where(s => s.GameMode == "Hardcore")
+            .OrderByDescending(s => s.Value)
+            .Take(10)
+            .ToListAsync();
+    }
+
+    private void GoHome() { NavManager.NavigateTo("/"); }
+}
